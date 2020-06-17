@@ -100,7 +100,7 @@ class PlexonRawIO(BaseRawIO):
                                 2 ** 32 + bl_header['TimeStamp']
 
         # ... and finalize them in self._data_blocks
-        # for a faster acces depending on type (1, 4, 5)
+        # for a faster access depending on type (1, 4, 5)
         self._data_blocks = {}
         dt_base = [('pos', 'int64'), ('timestamp', 'int64'), ('size', 'int64')]
         dtype_by_bltype = {
@@ -152,10 +152,10 @@ class PlexonRawIO(BaseRawIO):
             length = self._data_blocks[5][chan_id]['size'].sum() // 2
             if length == 0:
                 continue  # channel not added
-            all_sig_length.append(length)
+            # all_sig_length.append(length)
             sampling_rate = float(h['ADFreq'])
             sig_dtype = 'int16'
-            units = ''  # I dont't knwon units
+            units = ''  # I dont't know units
             if global_header['Version'] in [100, 101]:
                 gain = 5000. / (2048 * h['Gain'] * 1000.)
             elif global_header['Version'] in [102]:
@@ -166,17 +166,21 @@ class PlexonRawIO(BaseRawIO):
                     h['Gain'] * h['PreampGain'])
             offset = 0.
             group_id = 0
-            sig_channels.append((name, chan_id, sampling_rate, sig_dtype,
-                                 units, gain, offset, group_id))
+            # sig_channels.append((name, chan_id, sampling_rate, sig_dtype,
+            #                      units, gain, offset, group_id))
+            if sampling_rate == global_header['ADFrequency']:
+                sig_channels.append((name, chan_id, sampling_rate, sig_dtype, units, gain, offset, group_id))
+                all_sig_length.append(length)
         if len(all_sig_length) > 0:
             self._signal_length = min(all_sig_length)
         sig_channels = np.array(sig_channels, dtype=_signal_channel_dtype)
 
         self._global_ssampling_rate = global_header['ADFrequency']
-        if slowChannelHeaders.size > 0:
-            assert np.unique(slowChannelHeaders['ADFreq']
-                             ).size == 1, 'Signal do not have the same sampling rate'
-            self._sig_sampling_rate = float(slowChannelHeaders['ADFreq'][0])
+        self._sig_sampling_rate = self._global_ssampling_rate
+        # if slowChannelHeaders.size > 0:
+        #     assert np.unique(slowChannelHeaders['ADFreq']
+        #                      ).size == 1, 'Signal do not have the same sampling rate'
+        #     self._sig_sampling_rate = float(slowChannelHeaders['ADFreq'][0])
 
         # Determine number of units per channels
         self.internal_unit_ids = []
@@ -205,7 +209,7 @@ class PlexonRawIO(BaseRawIO):
                     .5 * 2. ** (global_header['BitsPerSpikeSample']) *
                     h['Gain'] * global_header['SpikePreAmpGain'])
             wf_offset = 0.
-            wf_left_sweep = -1  # DONT KNOWN
+            wf_left_sweep = -1  # DON'T KNOW
             wf_sampling_rate = global_header['WaveformFreq']
             unit_channels.append((name, _id, wf_units, wf_gain, wf_offset,
                                   wf_left_sweep, wf_sampling_rate))
@@ -271,8 +275,8 @@ class PlexonRawIO(BaseRawIO):
             data_blocks = self._data_blocks[5][chan_id]
 
             # loop over data blocks and get chunks
-            bl0 = np.searchsorted(data_blocks['cumsum'], i_start, side='right') - 1
-            bl1 = np.searchsorted(data_blocks['cumsum'], i_stop, side='right')
+            bl0 = np.searchsorted(data_blocks['cumsum'], i_start, side='left')
+            bl1 = np.searchsorted(data_blocks['cumsum'], i_stop, side='left')
             ind = 0
             for bl in range(bl0, bl1):
                 ind0 = data_blocks[bl]['pos']
